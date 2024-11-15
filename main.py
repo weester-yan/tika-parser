@@ -100,35 +100,37 @@ class ParserHandler(tornado.web.RequestHandler):
         assert 'file' in self.request.files and len(self.request.files) > 0, 'need post file with formdata'
         file_obj = self.request.files['file'][0]
         filename, body = file_obj['filename'], file_obj['body']
-        parsed = parser.from_buffer(body)
+        parsed = parser.from_buffer(
+            body,
+            headers={
+                "X-Tika-PDFextractInlineImages": "true",
+            },
+        )
         assert 'content' in parsed and parsed['content'], 'parsed error'
         matches = chunk_regex.findall(parsed['content'])
-        result, offset = [], 0
+        result, index, offset = [], 0, 0
         for m in matches:
             length = len(m[0])
             result.append({
                 'page_content': m[0],
                 'metadata': {
+                    'index': index,
                     'offset': offset,
                     'length': length,
                     'strip': len(m[0].strip()),
                     'source': filename,
-                    **parsed['metadata'],
+                    # **parsed['metadata'],
                 }
             })
             offset = offset + length
+            index = index + 1
         self.finish(json.dumps(result, ensure_ascii=False))
 
 
 def main():
     tika.initVM()
     tornado.log.enable_pretty_logging()
-    app = tornado.web.Application(
-        [(r"/", ParserHandler)],
-        websocket_ping_interval=10,
-        websocket_ping_timeout=30,
-        debug=True,
-    )
+    app = tornado.web.Application([(r"/", ParserHandler)])
     app.listen(8888)
     tornado.ioloop.IOLoop.instance().start()
 
