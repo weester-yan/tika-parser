@@ -2,6 +2,7 @@
 parse server based on tika
 
 > tika-server：解析文档内容
+
 > 正则：文本拆分chunk
 
 ## usage
